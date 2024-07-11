@@ -1,0 +1,4 @@
+*.log
+server.py
+app/
+data/
