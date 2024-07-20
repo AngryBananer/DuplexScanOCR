@@ -6,6 +6,8 @@ LABEL org.opencontainers.image.description="Watches the /data/consume folder for
 RUN apk add --update --no-cache \
     tesseract-ocr \
     ghostscript \
+    tesseract-ocr-data-eng \
+    tesseract-ocr-data-deu \
     && pip install --no-cache-dir \
     watchdog \
     ocrmypdf \

@@ -134,11 +134,16 @@ def combinePdf(input_file_odd, input_file_even, output_file):
             logger.error(f"Error: '{input_file_even}' could not be deleted!")
 
 def main():
+    if (OCR_LANG != "deu" and OCR_LANG != "eng"):
+        try:
+            subprocess.run(["apk", "add", "--update", "--no-cache", "tesseract-ocr-data-" + OCR_LANG])
+        except:
+            logger.error("Error downloading tesseract language data")
     try:
-        subprocess.run(["apk", "add", "--update", "--no-cache", "tesseract-ocr-data-" + OCR_LANG])
+        logger.info("Checking tesseract langs so first run succeeds:")
+        subprocess.run(["tesseract", "--list-langs"]) #must be called or first run will fail
     except:
-        logger.error("Error downloading tesseract language data")
-
+        pass
     patterns = ["*.pdf"]
     ignore_patterns = None
     ignore_directories = False
