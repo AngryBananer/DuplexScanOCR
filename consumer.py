@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from pathlib import Path
 import subprocess
+import time
 import pypdf
 import ocrmypdf
 import itertools as itt
@@ -79,6 +80,8 @@ def on_pdf_created(event):
             
 
 def ocrFile(input_file, output_file):
+    logger.debug("Waiting 5 seconds to ensure file is written completely")
+    time.sleep(5)
     try:
         ocrmypdf.ocr(input_file, output_file, 
             optimize=1,
@@ -90,14 +93,15 @@ def ocrFile(input_file, output_file):
         )
         logger.info(f"Scan ocr'd: '{output_file}'")
         return True
-    except:
+    except Exception as e:
         logger.error(f"Error: '{input_file}' could not be ocr'd by ocrmypdf!")
+        logger.error(e)
         return False
     finally:
         try:
             os.remove(input_file)
-        except OSError:
-            pass
+        except Exception as ex:
+            logger.error(ex)
 
 def combinePdf(input_file_odd, input_file_even, output_file):
     #https://gist.github.com/bskinn/6f1b769d9ca0338c5056c6878c70be62
