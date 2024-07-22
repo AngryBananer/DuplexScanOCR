@@ -11,8 +11,8 @@ from watchdog.observers.polling import PollingObserver
 from watchdog.events import PatternMatchingEventHandler
 import logging
 
-CONSUME_FOLDER = "/data/consume/" #input folder
-EXPORT_FOLDER = "/data/export/" #output folder
+CONSUME_FOLDER = "/data/consume" #input folder
+EXPORT_FOLDER = "/data/export" #output folder
 
 LOGLEVEL = os.environ.get('LOGLEVEL', "INFO").upper()
 LOGFILE = os.environ.get('LOGFILE')
@@ -48,48 +48,53 @@ DUPLEX_TIMEOUT = int(os.environ.get('DUPLEX_TIMEOUT', "600"))
 logger.info("Duplex timeout set to " + str(DUPLEX_TIMEOUT))
 
 waiting_folder = None
-waiting_file = None
+waiting_file = {}
 
 def on_pdf_created(event):
-    inputfile= event.src_path
+    inputfile = event.src_path
     logger.info(f"PDF-file '{inputfile}' has been created!")
+    input_subfolder = os.path.split(inputfile)[0].replace(CONSUME_FOLDER, "")
+    logger.info(f"File found in '{input_subfolder}'")
     if "duplex" not in inputfile:
         logger.info("No duplex scan...")
-        outputfile = EXPORT_FOLDER + "ocr_" + os.path.split(inputfile)[1]
+        outputfile = EXPORT_FOLDER + input_subfolder + "/OCR_" + os.path.split(inputfile)[1]
+        Path(os.path.split(outputfile)[0]).mkdir(mode=666, parents=True, exist_ok=True)
         ocrFile(inputfile, outputfile)
     else:
         logger.info("Duplex scan!")
-        outputfile = waiting_folder + "ocr_" + os.path.split(inputfile)[1]
+        outputfile = waiting_folder + "/OCR_" + os.path.split(inputfile)[1]
         if not ocrFile(inputfile, outputfile):
             return
         global waiting_file
-        if waiting_file is None:
-            waiting_file = outputfile
-        elif DUPLEX_TIMEOUT > 0 and os.path.getmtime(outputfile) - os.path.getmtime(waiting_file) > DUPLEX_TIMEOUT:
-            logger.warning(f"Waiting file '{waiting_file}' is older than {str(DUPLEX_TIMEOUT)} seconds, deleting and waiting with current file.")
+        if input_subfolder not in waiting_file:
+            waiting_file[input_subfolder] = outputfile
+        elif DUPLEX_TIMEOUT > 0 and os.path.getmtime(outputfile) - os.path.getmtime(waiting_file[input_subfolder]) > DUPLEX_TIMEOUT:
+            logger.warning(f"Waiting file '{waiting_file[input_subfolder]}' is older than {str(DUPLEX_TIMEOUT)} seconds, deleting and waiting with current file.")
             try:
-                os.remove(waiting_file)
-            except OSError:
-                pass
-            waiting_file = outputfile
+                os.remove(waiting_file[input_subfolder])
+            except Exception as e:
+                logger.error(e)
+            waiting_file[input_subfolder] = outputfile
         else:
             logger.info("Combinig scans...")
-            duplexfile = EXPORT_FOLDER + os.path.split(waiting_file)[1]
-            combinePdf(waiting_file, outputfile, duplexfile)
-            waiting_file = None
+            duplexfile = EXPORT_FOLDER + input_subfolder + "/" + os.path.split(waiting_file[input_subfolder])[1]
+            Path(os.path.split(duplexfile)[0]).mkdir(mode=666, parents=True, exist_ok=True)
+            combinePdf(waiting_file[input_subfolder], outputfile, duplexfile)
+            waiting_file.pop(input_subfolder)
             
 
 def ocrFile(input_file, output_file):
     logger.debug("Waiting 5 seconds to ensure file is written completely")
     time.sleep(5)
     try:
-        ocrmypdf.ocr(input_file, output_file, 
+        ocrmypdf.ocr(input_file, output_file,
             optimize=1,
             deskew=True,
             tesseract_timeout=400,
             skip_text=True, 
             max_image_mpixels=901167396,
-            language=OCR_LANG
+            language=OCR_LANG,
+            progess_bar=False
         )
         logger.info(f"Scan ocr'd: '{output_file}'")
         return True
@@ -100,8 +105,8 @@ def ocrFile(input_file, output_file):
     finally:
         try:
             os.remove(input_file)
-        except Exception as ex:
-            logger.error(ex)
+        except Exception as e:
+            logger.error(e)
 
 def combinePdf(input_file_odd, input_file_even, output_file):
     #https://gist.github.com/bskinn/6f1b769d9ca0338c5056c6878c70be62
@@ -125,17 +130,20 @@ def combinePdf(input_file_odd, input_file_even, output_file):
                 with open(output_file, 'wb') as f_out:
                     pdf_out.write(f_out)
         logger.info(f"Scan's combined: '{output_file}'")
-    except:
+    except Exception as e:
         logger.error(f"Error: '{input_file_odd}' and '{input_file_even}' could not be combined!")
+        logger.error(e)
     finally:
         try:
             os.remove(input_file_odd)
-        except OSError:
+        except Exception as e:
             logger.error(f"Error: '{input_file_odd}' could not be deleted!")
+            logger.error(e)
         try:
             os.remove(input_file_even)
-        except OSError:
+        except Exception as e:
             logger.error(f"Error: '{input_file_even}' could not be deleted!")
+            logger.error(e)
 
 def main():
     if (OCR_LANG != "deu" and OCR_LANG != "eng"):
@@ -164,7 +172,7 @@ def main():
     Path(EXPORT_FOLDER).mkdir(mode=666, parents=True, exist_ok=True)
 
     global waiting_folder
-    waiting_folder = tempfile.mkdtemp() + "/"
+    waiting_folder = tempfile.mkdtemp()
     
     my_observer.start()
     logger.info("Started observing " + CONSUME_FOLDER)
