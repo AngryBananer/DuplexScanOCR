@@ -83,16 +83,17 @@ def on_pdf_created(event):
             waiting_file.pop(input_subfolder)
             
 
-def ocrFile(input_file, output_file):
+def ocrFile(input_file, output_file, enable_deskew=True):
     logger.debug("Waiting 5 seconds to ensure file is written completely")
     time.sleep(5)
     try:
         ocrmypdf.ocr(input_file, output_file,
             optimize=1,
-            deskew=True,
+            deskew=enable_deskew,
             tesseract_timeout=400,
+            tesseract_non_ocr_timeout=400,
             skip_text=True, 
-            max_image_mpixels=901167396,
+            max_image_mpixels=500,
             language=OCR_LANG,
             progess_bar=False
         )
@@ -101,6 +102,9 @@ def ocrFile(input_file, output_file):
     except Exception as e:
         logger.error(f"Error: '{input_file}' could not be ocr'd by ocrmypdf!")
         logger.error(e)
+        if enable_deskew:                                                               ##### Temporary fix for error when processing blank pages
+            logger.warning(f"Warning: Trying '{input_file}' without deskew enabled...")
+            return ocrFile(input_file, output_file, False)
         return False
     finally:
         try:
