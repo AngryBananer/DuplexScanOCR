@@ -2,3 +2,4 @@
 server.py
 app/
 data/
+*.pdf

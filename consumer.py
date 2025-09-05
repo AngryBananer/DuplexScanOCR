@@ -83,7 +83,7 @@ def on_pdf_created(event):
             waiting_file.pop(input_subfolder)
             
 
-def ocrFile(input_file, output_file, enable_deskew=True):
+def ocrFile(input_file, output_file, enable_deskew=True) -> bool:
     logger.debug("Waiting 5 seconds to ensure file is written completely")
     time.sleep(5)
     try:
@@ -102,7 +102,7 @@ def ocrFile(input_file, output_file, enable_deskew=True):
     except Exception as e:
         logger.error(f"Error: '{input_file}' could not be ocr'd by ocrmypdf!")
         logger.error(e)
-        if enable_deskew:                                                               ##### Temporary fix for error when processing blank pages
+        if enable_deskew: # Old tesseract version failed on blank pages with deskew, leaving it in as backup option
             logger.warning(f"Warning: Trying '{input_file}' without deskew enabled...")
             return ocrFile(input_file, output_file, False)
         return False
