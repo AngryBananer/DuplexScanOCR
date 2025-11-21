@@ -1,7 +1,7 @@
 FROM python:3.14-alpine
 
 LABEL org.opencontainers.image.title="DuplexScanOCR"
-LABEL org.opencontainers.image.version="1.1.1"
+LABEL org.opencontainers.image.version="1.1.2"
 LABEL org.opencontainers.image.source=https://github.com/AngryBananer/DuplexScanOCR
 LABEL org.opencontainers.image.description="Watches the /data/consume folder for pdf's and ocr's them. If the filename contains duplex, the script waites for a second pdf and combines them."
 
@@ -11,6 +11,8 @@ ARG GHOSTSCRIPT_VERSION="10.05.1-r0"
 ARG OCRMYPDF_VERSION="16.12.0"
 ARG WATCHDOG_VERSION="6.0.0"
 ARG PYPDF_VERION="6.3.0"
+
+ARG DEFAULT_LANG="deu"
 
 RUN apk add --update --no-cache \
     tesseract-ocr=${TESSERACT_VERSION} \
@@ -24,6 +26,7 @@ RUN apk add --update --no-cache \
     && mkdir /app
 
 ENV TESSERACT_VERSION=${TESSERACT_VERSION}
+ENV DEFAULT_LANG=${DEFAULT_LANG}
 
 WORKDIR /app
 

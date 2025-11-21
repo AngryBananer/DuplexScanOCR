@@ -41,7 +41,13 @@ else:
 
 logger.info("Log level set to " + LOGLEVEL)
 
-OCR_LANG = os.environ.get('OCR_LANG', "deu")
+if os.environ.get('TESSERACT_VERSION') is None:
+    TESSERACT_VERSION = ""
+else:
+    TESSERACT_VERSION = "=" + os.environ.get('TESSERACT_VERSION',"")
+
+DEFAULT_LANG = os.environ.get('DEFAULT_LANG', "eng")
+OCR_LANG = os.environ.get('OCR_LANG', DEFAULT_LANG)
 logger.info("OCR language set to " + OCR_LANG)
 
 DUPLEX_TIMEOUT = int(os.environ.get('DUPLEX_TIMEOUT', "600"))
@@ -150,17 +156,21 @@ def combinePdf(input_file_odd, input_file_even, output_file):
             logger.error(e)
 
 def main():
-    if (OCR_LANG != "deu" and OCR_LANG != "eng"):
-        try:
-            subprocess.run(["apk", "add", "--update", "--no-cache", "tesseract-ocr-data-" + OCR_LANG])
-        except:
-            logger.error("Error downloading tesseract language data")
+    installed_langs = []
     try:
-        logger.info("Checking tesseract langs so first run succeeds:")
-        subprocess.run(["tesseract", "--list-langs"]) #must be called or first run will fail
+        logger.info("Checking installed tesseract languages:")
+        installed_langs = subprocess.run(["tesseract", "--list-langs"], encoding="utf-8", stdout=subprocess.PIPE).stdout.splitlines()
+        del installed_langs[0]
+        logger.info(installed_langs)
     except:
         logger.error("Couldn't get installed tesseract languages!")
         pass
+
+    if OCR_LANG not in installed_langs:
+        try:
+            subprocess.run(["apk", "add", "--update", "--no-cache", "tesseract-ocr-data-" + OCR_LANG + TESSERACT_VERSION])
+        except:
+            logger.error("Error downloading tesseract language data")
 
     my_event_handler = PatternMatchingEventHandler(patterns=["*.pdf"], ignore_patterns=None, ignore_directories=False, case_sensitive=True)
 
