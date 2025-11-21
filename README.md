@@ -5,6 +5,11 @@ This container adds two features to any scanner that can scan to network shares:
 DuplexScanOCR watches the `/data/consume` folder for PDFs and OCRs them with [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF). If the file path contains `duplex`, the script will wait for a second PDF file with `duplex` in the path and combine them. The finished files are exported to the `/data/export` folder.
 Subfolders are recreated inside the export folder.
 
+## Duplex scanning
+
+To create duplex scans with a normal scanner, scan all front pages in one go, then rotate the stack of paper and scan the backsides in reversed order.
+DuplexScanOCR will create a single file that alternates between the first file in its original order and the second file in reversed order.
+
 ## Environment Variables
 
  - `DUPLEX_TIMEOUT=<seconds>`
