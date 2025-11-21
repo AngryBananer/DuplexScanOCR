@@ -47,14 +47,14 @@ logger.info("OCR language set to " + OCR_LANG)
 DUPLEX_TIMEOUT = int(os.environ.get('DUPLEX_TIMEOUT', "600"))
 logger.info("Duplex timeout set to " + str(DUPLEX_TIMEOUT))
 
-waiting_folder = None
+waiting_folder = "/tmp"
 waiting_file = {}
 
 def on_pdf_created(event):
     inputfile = event.src_path
     logger.info(f"PDF-file '{inputfile}' has been created!")
     input_subfolder = os.path.split(inputfile)[0].replace(CONSUME_FOLDER, "")
-    logger.info(f"File found in '{input_subfolder}'")
+    if input_subfolder != "": logger.info(f"File found in '{input_subfolder}'")
     if "duplex" not in inputfile:
         logger.info("No duplex scan...")
         outputfile = EXPORT_FOLDER + input_subfolder + "/OCR_" + os.path.split(inputfile)[1]
@@ -84,7 +84,7 @@ def on_pdf_created(event):
             
 
 def ocrFile(input_file, output_file, enable_deskew=True) -> bool:
-    logger.debug("Waiting 5 seconds to ensure file is written completely")
+    logger.debug("Waiting 5 seconds to ensure file is written completely...")
     time.sleep(5)
     try:
         ocrmypdf.ocr(input_file, output_file,
@@ -159,6 +159,7 @@ def main():
         logger.info("Checking tesseract langs so first run succeeds:")
         subprocess.run(["tesseract", "--list-langs"]) #must be called or first run will fail
     except:
+        logger.error("Couldn't get installed tesseract languages!")
         pass
 
     my_event_handler = PatternMatchingEventHandler(patterns=["*.pdf"], ignore_patterns=None, ignore_directories=False, case_sensitive=True)
