@@ -88,8 +88,15 @@ def on_pdf_created(event):
             combinePdf(waiting_file.pop(input_subfolder), outputfile, duplexfile)
 
 def ocrFile(input_file, output_file, enable_deskew=True) -> bool:
-    logger.debug("Waiting 5 seconds to ensure file is written completely...")
-    time.sleep(5)
+    logger.info("Waiting while file is being written...")
+    input_size = -1
+    input_size_new = 0
+    while input_size < input_size_new:
+        time.sleep(1)
+        input_size = input_size_new
+        input_size_new = os.path.getsize(input_file)
+        logger.debug(input_file + ": " + str(input_size_new) + " bytes")
+
     try:
         ocrmypdf.ocr(input_file, output_file,
             optimize=1,
