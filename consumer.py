@@ -51,7 +51,7 @@ OCR_LANG = os.environ.get('OCR_LANG', DEFAULT_LANG)
 logger.info("OCR language set to " + OCR_LANG)
 
 DUPLEX_TIMEOUT = int(os.environ.get('DUPLEX_TIMEOUT', "600"))
-logger.info("Duplex timeout set to " + str(DUPLEX_TIMEOUT))
+logger.info("Duplex timeout set to " + str(DUPLEX_TIMEOUT) + " s")
 
 waiting_folder = "/tmp"
 waiting_file = {}
@@ -85,9 +85,7 @@ def on_pdf_created(event):
             logger.info("Combinig scans...")
             duplexfile = EXPORT_FOLDER + input_subfolder + "/" + os.path.split(waiting_file[input_subfolder])[1]
             Path(os.path.split(duplexfile)[0]).mkdir(mode=666, parents=True, exist_ok=True)
-            combinePdf(waiting_file[input_subfolder], outputfile, duplexfile)
-            waiting_file.pop(input_subfolder)
-            
+            combinePdf(waiting_file.pop(input_subfolder), outputfile, duplexfile)
 
 def ocrFile(input_file, output_file, enable_deskew=True) -> bool:
     logger.debug("Waiting 5 seconds to ensure file is written completely...")
@@ -168,17 +166,17 @@ def main():
 
     if OCR_LANG not in installed_langs:
         try:
+            logger.info(OCR_LANG + " not found, installing tesseract-ocr-data-" + OCR_LANG + TESSERACT_VERSION)
             subprocess.run(["apk", "add", "--update", "--no-cache", "tesseract-ocr-data-" + OCR_LANG + TESSERACT_VERSION])
         except:
             logger.error("Error downloading tesseract language data")
 
-    my_event_handler = PatternMatchingEventHandler(patterns=["*.pdf"], ignore_patterns=None, ignore_directories=False, case_sensitive=True)
+    pdf_event_handler = PatternMatchingEventHandler(patterns=["*.pdf"], ignore_patterns=None, ignore_directories=False, case_sensitive=True)
 
-    my_event_handler.on_created = on_pdf_created
+    pdf_event_handler.on_created = on_pdf_created
 
-    go_recursively = True
-    my_observer = PollingObserver()
-    my_observer.schedule(my_event_handler, CONSUME_FOLDER, recursive=go_recursively)
+    consume_observer = PollingObserver()
+    consume_observer.schedule(pdf_event_handler, CONSUME_FOLDER, recursive=True)
 
     Path(CONSUME_FOLDER).mkdir(mode=666, parents=True, exist_ok=True)
     Path(EXPORT_FOLDER).mkdir(mode=666, parents=True, exist_ok=True)
@@ -186,14 +184,14 @@ def main():
     global waiting_folder
     waiting_folder = tempfile.mkdtemp()
     
-    my_observer.start()
+    consume_observer.start()
     logger.info("Started observing " + CONSUME_FOLDER)
     try:
         while True:
-            my_observer.join(1)
+            consume_observer.join(1)
     except KeyboardInterrupt:
-        my_observer.stop()
-        my_observer.join()
+        consume_observer.stop()
+        consume_observer.join()
     finally:
         shutil.rmtree(waiting_folder)
 
